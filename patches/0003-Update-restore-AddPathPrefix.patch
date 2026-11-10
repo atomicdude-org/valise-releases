@@ -1,0 +1,38 @@
+From: NanaZip for macOS
+Subject: [PATCH] Update: restore CUpdateOptions::AddPathPrefix
+
+EnumerateItems() already takes a logical path prefix for new items, but
+UpdateArchive() passes an empty string and the option that would set it is
+commented out. Restore it, so a front-end can add files into a folder of an
+existing archive through UpdateArchive() (the macOS app's "add to this
+folder"), instead of reimplementing the update. Empty by default, so the
+console's behavior is unchanged.
+
+---
+diff --git a/NanaZip.Universal/SevenZip/CPP/7zip/UI/Common/Update.cpp b/NanaZip.Universal/SevenZip/CPP/7zip/UI/Common/Update.cpp
+index 19bb535..2d95140 100644
+--- a/NanaZip.Universal/SevenZip/CPP/7zip/UI/Common/Update.cpp
++++ b/NanaZip.Universal/SevenZip/CPP/7zip/UI/Common/Update.cpp
+@@ -1396,7 +1396,7 @@ HRESULT UpdateArchive(
+
+       const HRESULT res = EnumerateItems(censor,
+           options.PathMode,
+-          UString(), // options.AddPathPrefix,
++          options.AddPathPrefix,
+           dirItems);
+
+       if (res != S_OK)
+diff --git a/NanaZip.Universal/SevenZip/CPP/7zip/UI/Common/Update.h b/NanaZip.Universal/SevenZip/CPP/7zip/UI/Common/Update.h
+index 7834cb5..ecc0d24 100644
+--- a/NanaZip.Universal/SevenZip/CPP/7zip/UI/Common/Update.h
++++ b/NanaZip.Universal/SevenZip/CPP/7zip/UI/Common/Update.h
+@@ -116,7 +116,8 @@ struct CUpdateOptions
+   UString StdInFileName;
+   UString EMailAddress;
+   FString WorkingDir;
+-  // UString AddPathPrefix;
++  // Folder inside the archive that new items are added to ("dir/sub/").
++  UString AddPathPrefix;
+
+   CObjectVector<CRenamePair> RenamePairs;
+   CRecordVector<UInt64> VolumesSizes;

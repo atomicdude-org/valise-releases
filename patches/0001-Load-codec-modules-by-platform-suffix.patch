@@ -1,0 +1,70 @@
+From: NanaZip for macOS
+Subject: [PATCH] Load codec modules by platform suffix; fix FString build on Unix
+
+LoadCodecs: NanaZip loads NanaZip.Codecs.dll / NanaZip.ZS.Codecs.dll with
+wide-string literals, which do not build where FString is AString (Unix),
+and hardcodes the .dll suffix. Use FTEXT with a per-platform module suffix
+(.dll, .dylib, .so).
+
+Extract: SmartExtract appends a UString to an FString; convert with us2fs
+(a no-op on Windows).
+
+---
+diff --git a/NanaZip.Universal/SevenZip/CPP/7zip/UI/Common/Extract.cpp b/NanaZip.Universal/SevenZip/CPP/7zip/UI/Common/Extract.cpp
+index 9e700c5..0310af7 100644
+--- a/NanaZip.Universal/SevenZip/CPP/7zip/UI/Common/Extract.cpp
++++ b/NanaZip.Universal/SevenZip/CPP/7zip/UI/Common/Extract.cpp
+@@ -222,7 +222,7 @@ static HRESULT DecompressArchive(
+           break;
+       }
+       if (firstLevelSet.size() > 1)
+-        ecs->OutDir += replaceName;
++        ecs->OutDir += us2fs(replaceName);
+     }
+     // **************** NanaZip Modification End ****************
+ 
+diff --git a/NanaZip.Universal/SevenZip/CPP/7zip/UI/Common/LoadCodecs.cpp b/NanaZip.Universal/SevenZip/CPP/7zip/UI/Common/LoadCodecs.cpp
+index 85df79d..cd72566 100644
+--- a/NanaZip.Universal/SevenZip/CPP/7zip/UI/Common/LoadCodecs.cpp
++++ b/NanaZip.Universal/SevenZip/CPP/7zip/UI/Common/LoadCodecs.cpp
+@@ -83,12 +83,14 @@ using namespace NFile;
+ //  #else
+ //    FTEXT("7z.so");
+ //  #endif
+-static CFSTR const kMainDll =
+-  #ifdef _WIN32
+-    FTEXT("NanaZip.Core.dll");
+-  #else
+-    FTEXT("NanaZip.Core.so");
+-  #endif
++#if defined(_WIN32)
++  #define NANAZIP_MODULE_SUFFIX ".dll"
++#elif defined(__APPLE__)
++  #define NANAZIP_MODULE_SUFFIX ".dylib"
++#else
++  #define NANAZIP_MODULE_SUFFIX ".so"
++#endif
++static CFSTR const kMainDll = FTEXT("NanaZip.Core" NANAZIP_MODULE_SUFFIX);
+ // **************** NanaZip Modification End ****************
+ 
+ 
+@@ -927,15 +929,15 @@ HRESULT CCodecs::Load()
+     // **************** NanaZip Modification Start ****************
+     {
+       bool loadedOK;
+-      RINOK(LoadDll(baseFolder + L"NanaZip.Codecs.dll", false, &loadedOK));
++      RINOK(LoadDll(baseFolder + FTEXT("NanaZip.Codecs" NANAZIP_MODULE_SUFFIX), false, &loadedOK));
+       if (!loadedOK)
+-        MainDll_ErrorPath = L"NanaZip.Codecs.dll";
++        MainDll_ErrorPath = FTEXT("NanaZip.Codecs" NANAZIP_MODULE_SUFFIX);
+     }
+     {
+       bool loadedOK;
+-      RINOK(LoadDll(baseFolder + L"NanaZip.ZS.Codecs.dll", false, &loadedOK));
++      RINOK(LoadDll(baseFolder + FTEXT("NanaZip.ZS.Codecs" NANAZIP_MODULE_SUFFIX), false, &loadedOK));
+       if (!loadedOK)
+-        MainDll_ErrorPath = L"NanaZip.ZS.Codecs.dll";
++        MainDll_ErrorPath = FTEXT("NanaZip.ZS.Codecs" NANAZIP_MODULE_SUFFIX);
+     }
+     // **************** NanaZip Modification End ****************
+     {

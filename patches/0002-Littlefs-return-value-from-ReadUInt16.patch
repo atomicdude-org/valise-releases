@@ -1,0 +1,21 @@
+From: NanaZip for macOS
+Subject: [PATCH] Littlefs: return the value read by ReadUInt16
+
+ReadUInt16 discarded the result of MoMileFixedIntegerReadLittleEndian16
+and fell off the end of a non-void function. MSVC happens to leave the
+value in the return register; with clang this is undefined behavior.
+
+---
+diff --git a/NanaZip.Codecs/NanaZip.Codecs.Archive.Littlefs.cpp b/NanaZip.Codecs/NanaZip.Codecs.Archive.Littlefs.cpp
+index f8a49b0..514ac90 100644
+--- a/NanaZip.Codecs/NanaZip.Codecs.Archive.Littlefs.cpp
++++ b/NanaZip.Codecs/NanaZip.Codecs.Archive.Littlefs.cpp
+@@ -452,7 +452,7 @@ namespace NanaZip::Codecs::Archive
+         std::uint16_t ReadUInt16(
+             const void* BaseAddress)
+         {
+-            ::MoMileFixedIntegerReadLittleEndian16(BaseAddress);
++            return ::MoMileFixedIntegerReadLittleEndian16(BaseAddress);
+         }
+ 
+         std::uint32_t ReadUInt32(
